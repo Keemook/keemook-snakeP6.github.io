@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมบันไดงู ห.ร.ม. และ ค.ร.น.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF5E62;
+            --primary-dark: #D9383F;
+            --secondary: #00C9FF;
+            --secondary-dark: #0093D9;
+            --success: #28a745;
+            --success-dark: #1e7e34;
+            --warning: #ffc107;
+            --warning-dark: #d39e00;
+            --danger: #dc3545;
+            --danger-dark: #bd2130;
+            --bg-color: #f0f8ff;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Kanit', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            padding: 20px;
+            margin: 20px;
+            position: relative;
+            min-height: 600px;
+        }
+
+        /* 3D Buttons */
+        .btn-3d {
+            display: inline-block;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: white;
+            background: var(--primary);
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.1s;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        
+        .btn-3d:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 var(--primary-dark), 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary { background: var(--secondary); box-shadow: 0 8px 0 var(--secondary-dark); }
+        .btn-secondary:active { box-shadow: 0 0 0 var(--secondary-dark); }
+
+        /* Screens */
+        .screen { display: none; text-align: center; animation: fadeIn 0.5s ease; }
+        .screen.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { font-size: 2.5rem; color: #333; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        p { font-size: 1.1rem; color: #555; line-height: 1.6; }
+
+        /* Player Setup */
+        .player-setup-box { background: #f9f9f9; padding: 20px; border-radius: 20px; margin: 20px 0; border: 3px dashed #ccc; }
+        .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 15px 0; }
+        .avatar-btn { font-size: 2rem; background: white; border: 2px solid #ddd; border-radius: 15px; cursor: pointer; transition: 0.3s; padding: 10px; box-shadow: 0 4px #ccc; }
+        .avatar-btn.selected { border-color: var(--primary); transform: scale(1.1); box-shadow: 0 6px var(--primary-dark); }
+        .player-input { padding: 12px; font-size: 1.2rem; border-radius: 10px; border: 2px solid #ddd; width: 100%; max-width: 300px; text-align: center; }
+        .player-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+        .player-badge { background: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; }
+
+        /* Game Board */
+        .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 20px; background: #fff; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin: 0 auto; max-width: 600px; background: #e0e0e0; padding: 10px; border-radius: 20px; box-shadow: inset 0 10px 20px rgba(0,0,0,0.1); }
+        .cell { aspect-ratio: 1; background: white; border-radius: 15px; display: flex; justify-content: center; align-items: center; position: relative; font-weight: bold; font-size: 1.5rem; color: rgba(0,0,0,0.2); box-shadow: 0 6px 0 #ccc; transition: 0.3s; }
+        .cell:nth-child(even) { background: #fdfdfd; }
+        .cell:nth-child(odd) { background: #f4f4f4; }
+        .cell.snake { background: #ffcccc; box-shadow: 0 6px 0 #cc9999; }
+        .cell.ladder { background: #ccffcc; box-shadow: 0 6px 0 #99cc99; }
+        .cell-content { position: absolute; font-size: 0.8rem; top: 5px; color: #333; font-weight: normal; text-align: center; width: 100%; line-height: 1; }
+        
+        .token { position: absolute; font-size: 2rem; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); filter: drop-shadow(0 4px 2px rgba(0,0,0,0.3)); z-index: 10; }
+        
+        .dice-area { margin-top: 30px; text-align: center; }
+        .dice-result { font-size: 4rem; display: inline-block; margin-left: 20px; animation: bounce 0.5s; vertical-align: middle; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 30px; border-radius: 30px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); transform: scale(0.8); transition: 0.3s; }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .option-btn { background: #f0f0f0; border: 3px solid #ddd; padding: 15px; border-radius: 15px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 0 #ccc; }
+        .option-btn:hover { background: #e9ecef; }
+        .option-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #ccc; }
+        .option-btn.correct { background: #d4edda; border-color: var(--success); color: var(--success-dark); }
+        .option-btn.wrong { background: #f8d7da; border-color: var(--danger); color: var(--danger-dark); }
+
+        .feedback-box { margin-top: 20px; padding: 15px; border-radius: 15px; display: none; font-size: 1.1rem; }
+        .feedback-box.show { display: block; animation: fadeIn 0.3s; }
+        
+        #confetti { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+
+        @media(max-width: 600px) {
+            .board { gap: 2px; }
+            .cell { font-size: 1rem; box-shadow: 0 4px 0 #ccc; }
+            .token { font-size: 1.2rem; }
+            .avatar-grid { grid-template-columns: repeat(5, 1fr); }
+            h1 { font-size: 1.8rem; }
+            .options-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti"></canvas>
+
+    <div class="container">
+        
+        <!-- Screen 1: Welcome -->
+        <div id="screen-welcome" class="screen active">
+            <h1 style="color: var(--primary); font-size: 3rem; text-shadow: 3px 3px 0 #ffcccc;">🐍 ศึกบันไดงู 🪜<br>ตะลุยโจทย์ ห.ร.ม. & ค.ร.น.</h1>
+            <p style="font-size: 1.2rem; background: #fff8f8; padding: 20px; border-radius: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); border: 2px dashed var(--primary);">
+                <b>วิธีเล่น:</b><br>
+                1. ทอยลูกเต๋าเพื่อสุ่มจำนวนช่องที่จะเดิน<br>
+                2. ตอบคำถามคณิตศาสตร์ให้ถูกต้องเพื่อเดินหน้า<br>
+                3. ตอบผิด จะต้องหยุดอยู่กับที่!<br>
+                4. หากตกช่องบันได จะได้เลื่อนขึ้น, หากตกช่องงู จะหล่นลงมา<br>
+                <i>ใครถึงช่อง 30 ก่อนเป็นผู้ชนะ!</i>
+            </p>
+            <br>
+            <button class="btn-3d" onclick="showScreen('screen-setup')">เริ่มเกมเลย! 🎮</button>
+        </div>
+
+        <!-- Screen 2: Setup -->
+        <div id="screen-setup" class="screen">
+            <h1>👥 เลือกตัวละครผู้เล่น</h1>
+            <p>เพิ่มผู้เล่นได้สูงสุด 5 คน</p>
+            
+            <div class="player-setup-box" id="setup-box">
+                <input type="text" id="player-name" class="player-input" placeholder="พิมพ์ชื่อผู้เล่นที่นี่..." maxlength="10">
+                <div class="avatar-grid" id="avatar-selection">
+                    <!-- Avatars via JS -->
+                </div>
+                <button class="btn-3d btn-secondary" onclick="addPlayer()" style="font-size: 1rem; padding: 10px 20px;">+ เพิ่มผู้เล่น</button>
+            </div>
+
+            <div class="player-list" id="player-list"></div>
+            <br>
+            <button class="btn-3d" id="btn-start-game" onclick="startGame()" style="display: none;">เข้าสู่กระดานเกม 🎲</button>
+        </div>
+
+        <!-- Screen 3: Game Board -->
+        <div id="screen-game" class="screen">
+            <div class="game-header">
+                <h2 id="current-player-display" style="margin: 0; color: var(--primary);">ตากอง: ---</h2>
+                <div id="mini-leaderboard" style="font-size: 0.9rem; text-align: right;"></div>
+            </div>
+            
+            <div class="board" id="board">
+                <!-- Cells generated via JS -->
+            </div>
+
+            <div class="dice-area">
+                <button class="btn-3d" id="btn-dice" onclick="rollDice()">ทอยลูกเต๋า 🎲</button>
+                <div class="dice-result" id="dice-display">❓</div>
+            </div>
+        </div>
+
+        <!-- Screen 4: End Game -->
+        <div id="screen-end" class="screen">
+            <h1 style="font-size: 4rem;">🎉 ยินดีด้วย! 🎉</h1>
+            <h2 id="winner-text" style="font-size: 2rem; color: var(--primary);">ผู้ชนะคือ ...</h2>
+            <br><br>
+            <button class="btn-3d btn-secondary" onclick="location.reload()">เล่นใหม่อีกครั้ง 🔄</button>
+        </div>
+
+    </div>
+
+    <!-- Question Modal -->
+    <div class="modal-overlay" id="question-modal">
+        <div class="modal-content">
+            <h2 id="q-title" style="color: var(--secondary-dark);">โจทย์ปัญหา</h2>
+            <p id="q-text" style="font-size: 1.3rem; font-weight: bold; margin: 20px 0;"></p>
+            <div class="options-grid" id="q-options">
+                <!-- Options via JS -->
+            </div>
+            <div class="feedback-box" id="q-feedback"></div>
+            <br>
+            <button class="btn-3d" id="btn-continue" style="display: none; width: 100%;" onclick="closeQuestion()">ดำเนินการต่อ</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Game Data & Configurations ---
+        const avatars = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯'];
+        let players = [];
+        let currentPlayerIndex = 0;
+        let selectedAvatar = '🐶';
+        let currentDice = 0;
+        let pendingMove = 0;
+        const maxSquares = 30;
+
+        // Snakes and Ladders mapping { from: to }
+        const ladders = { 3: 14, 9: 22, 16: 26 };
+        const snakes = { 11: 5, 20: 8, 28: 15 };
+
+        // Math Questions (GCF/LCM)
+        const questionsDB = [
+            { q: "ห.ร.ม. ของ 8 และ 12 คือข้อใด?", options: ["2", "4", "8", "24"], ans: 1, exp: "ตัวหารร่วมที่มากที่สุดของ 8 และ 12 คือ 4" },
+            { q: "ค.ร.น. ของ 6 และ 9 คือข้อใด?", options: ["3", "18", "36", "54"], ans: 1, exp: "พหุคูณร่วมน้อยที่สุดของ 6 และ 9 คือ 18 (6x3=18, 9x2=18)" },
+            { q: "ห.ร.ม. ของ 15 และ 25 คือข้อใด?", options: ["3", "5", "15", "75"], ans: 1, exp: "5 เป็นจำนวนที่มากที่สุดที่หารทั้ง 15 และ 25 ลงตัว" },
+            { q: "ค.ร.น. ของ 4, 6, 8 คือข้อใด?", options: ["2", "12", "24", "48"], ans: 2, exp: "24 เป็นจำนวนที่น้อยที่สุดที่ 4, 6, 8 หารลงตัว" },
+            { q: "เชือก 3 เส้นยาว 12, 18, 24 เมตร ตัดให้ยาวเท่าๆ กันให้ยาวที่สุด จะได้ท่อนละกี่เมตร?", options: ["2 เมตร", "3 เมตร", "6 เมตร", "12 เมตร"], ans: 2, exp: "หา ห.ร.ม. ของ 12, 18, 24 ซึ่งเท่ากับ 6" },
+            { q: "รถบัส 3 สาย ออกทุก 15, 20 และ 30 นาที จะออกพร้อมกันอีกครั้งในอีกกี่นาที?", options: ["30 นาที", "60 นาที", "90 นาที", "120 นาที"], ans: 1, exp: "หา ค.ร.น. ของ 15, 20, 30 ซึ่งเท่ากับ 60" },
+            { q: "ห.ร.ม. ของ 14 และ 21 คือ?", options: ["7", "14", "21", "42"], ans: 0, exp: "7 เป็นจำนวนที่มากที่สุดที่หาร 14 และ 21 ลงตัว" },
+            { q: "ค.ร.น. ของ 5 และ 7 คือ?", options: ["5", "7", "12", "35"], ans: 3, exp: "เนื่องจาก 5 และ 7 เป็นจำนวนเฉพาะ ค.ร.น. คือ 5 x 7 = 35" },
+            { q: "มีดอกกุหลาบ 45 ดอก และดอกมะลิ 60 ดอก จัดใส่แจกันให้ได้มากที่สุดโดยไม่ปนกัน แจกันละกี่ดอก?", options: ["5 ดอก", "10 ดอก", "15 ดอก", "20 ดอก"], ans: 2, exp: "หา ห.ร.ม. ของ 45 และ 60 ซึ่งก็คือ 15" },
+            { q: "นาฬิกา 3 เรือน ปลุกทุก 4, 6 และ 10 ชม. จะปลุกพร้อมกันเมื่อผ่านไปกี่ชั่วโมง?", options: ["12 ชม.", "30 ชม.", "60 ชม.", "120 ชม."], ans: 2, exp: "หา ค.ร.น. ของ 4, 6, 10 ซึ่งก็คือ 60" }
+        ];
+
+        // Layout mapping for Snake path in a 6x5 grid (1 at bottom-left, 30 at top-right or top-left)
+        // Row 5: 25 26 27 28 29 30 (L -> R)
+        // Row 4: 24 23 22 21 20 19 (R -> L)
+        // Row 3: 13 14 15 16 17 18 (L -> R)
+        // Row 2: 12 11 10  9  8  7 (R -> L)
+        // Row 1:  1  2  3  4  5  6 (L -> R)
+        const boardLayout = [
+            25, 26, 27, 28, 29, 30,
+            24, 23, 22, 21, 20, 19,
+            13, 14, 15, 16, 17, 18,
+            12, 11, 10,  9,  8,  7,
+             1,  2,  3,  4,  5,  6
+        ];
+
+        // --- 2. Audio System (Web Audio API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration, vol=0.1) {
+            try {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+        function soundClick() { playTone(600, 'sine', 0.1); }
+        function soundDice() { 
+            playTone(400, 'square', 0.05); 
+            setTimeout(()=>playTone(500, 'square', 0.05), 50);
+            setTimeout(()=>playTone(600, 'square', 0.05), 100);
+        }
+        function soundCorrect() { 
+            playTone(523.25, 'sine', 0.1); 
+            setTimeout(()=>playTone(659.25, 'sine', 0.1), 100);
+            setTimeout(()=>playTone(783.99, 'sine', 0.2), 200);
+        }
+        function soundWrong() { playTone(200, 'sawtooth', 0.3); setTimeout(()=>playTone(150, 'sawtooth', 0.4), 200); }
+        function soundWin() {
+            let notes = [523, 587, 659, 698, 784, 880, 987, 1046];
+            notes.forEach((n, i) => setTimeout(()=>playTone(n, 'sine', 0.15), i*150));
+        }
+
+        // --- 3. UI Initialization ---
+        function initSetup() {
+            const grid = document.getElementById('avatar-selection');
+            grid.innerHTML = '';
+            avatars.forEach(av => {
+                let btn = document.createElement('div');
+                btn.className = `avatar-btn ${av === selectedAvatar ? 'selected' : ''}`;
+                btn.innerText = av;
+                btn.onclick = () => {
+                    soundClick();
+                    document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedAvatar = av;
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            soundClick();
+            if(id === 'screen-setup') initSetup();
+        }
+
+        function addPlayer() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim() || `ผู้เล่น ${players.length + 1}`;
+            
+            if(players.length >= 5) {
+                alert("เพิ่มผู้เล่นได้สูงสุด 5 คนเท่านั้น!");
+                return;
+            }
+            if(players.find(p => p.avatar === selectedAvatar)) {
+                alert("ตัวละครนี้ถูกเลือกแล้ว กรุณาเลือกตัวละครอื่น");
+                return;
+            }
+
+            players.push({ name: name, avatar: selectedAvatar, pos: 0 });
+            soundClick();
+            
+            nameInput.value = '';
+            updatePlayerList();
+            
+            // Auto select next available avatar
+            let nextAv = avatars.find(a => !players.find(p => p.avatar === a));
+            if(nextAv) {
+                selectedAvatar = nextAv;
+                initSetup();
+            }
+
+            if(players.length > 0) document.getElementById('btn-start-game').style.display = 'inline-block';
+            if(players.length >= 5) document.getElementById('setup-box').style.display = 'none';
+        }
+
+        function updatePlayerList() {
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+            players.forEach(p => {
+                list.innerHTML += `<div class="player-badge"><span>${p.avatar}</span> <span>${p.name}</span></div>`;
+            });
+        }
+
+        // --- 4. Game Logic ---
+        function startGame() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            buildBoard();
+            updateTokens();
+            updateUI();
+            showScreen('screen-game');
+        }
+
+        function buildBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            boardLayout.forEach(num => {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${num}`;
+                
+                // Add labels for snakes/ladders
+                let extra = '';
+                if(ladders[num]) {
+                    cell.classList.add('ladder');
+                    extra = `🪜 ขึ้นไป ${ladders[num]}`;
+                } else if(snakes[num]) {
+                    cell.classList.add('snake');
+                    extra = `🐍 ตกไป ${snakes[num]}`;
+                }
+
+                cell.innerHTML = `${num} <div class="cell-content">${extra}</div>`;
+                board.appendChild(cell);
+            });
+        }
+
+        function updateTokens() {
+            // Remove old tokens
+            document.querySelectorAll('.token').forEach(t => t.remove());
+            
+            // Count players on each cell to adjust visual layout
+            let cellCounts = {};
+            
+            players.forEach((p, idx) => {
+                if(p.pos > 0) {
+                    let cell = document.getElementById(`cell-${p.pos}`);
+                    if(cell) {
+                        if(!cellCounts[p.pos]) cellCounts[p.pos] = 0;
+                        let offset = cellCounts[p.pos] * 10; // offset in px
+                        
+                        let token = document.createElement('div');
+                        token.className = 'token';
+                        token.innerText = p.avatar;
+                        // Positioning adjustment so they don't overlap exactly
+                        token.style.transform = `translate(${offset - 10}px, ${offset - 10}px)`;
+                        cell.appendChild(token);
+                        
+                        cellCounts[p.pos]++;
+                    }
+                }
+            });
+        }
+
+        function updateUI() {
+            let p = players[currentPlayerIndex];
+            document.getElementById('current-player-display').innerHTML = `ตากอง: <span style="background:#fff; padding:5px 15px; border-radius:20px; box-shadow:0 4px #ddd;">${p.avatar} ${p.name}</span>`;
+            document.getElementById('btn-dice').disabled = false;
+            document.getElementById('btn-dice').style.opacity = 1;
+            
+            let mini = players.map(pl => `${pl.avatar} ช.${pl.pos}`).join(' | ');
+            document.getElementById('mini-leaderboard').innerText = mini;
+        }
+
+        const diceFaces = ['🎲', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+        function rollDice() {
+            soundDice();
+            const btn = document.getElementById('btn-dice');
+            btn.disabled = true;
+            btn.style.opacity = 0.5;
+            
+            let result = Math.floor(Math.random() * 6) + 1;
+            let display = document.getElementById('dice-display');
+            
+            // Animation
+            let rolls = 0;
+            let interval = setInterval(() => {
+                display.innerText = diceFaces[Math.floor(Math.random() * 6) + 1];
+                rolls++;
+                if(rolls > 10) {
+                    clearInterval(interval);
+                    currentDice = result;
+                    display.innerText = diceFaces[result] + ` (${result})`;
+                    setTimeout(() => triggerQuestion(), 800);
+                }
+            }, 50);
+        }
+
+        function triggerQuestion() {
+            let q = questionsDB[Math.floor(Math.random() * questionsDB.length)];
+            currentQuestion = q;
+            
+            document.getElementById('q-title').innerText = "ตอบถูกได้เดิน ตอบผิดอดเดิน!";
+            document.getElementById('q-text').innerText = q.q;
+            
+            const optionsBox = document.getElementById('q-options');
+            optionsBox.innerHTML = '';
+            
+            q.options.forEach((opt, idx) => {
+                let btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, btn);
+                optionsBox.appendChild(btn);
+            });
+
+            document.getElementById('q-feedback').className = 'feedback-box';
+            document.getElementById('btn-continue').style.display = 'none';
+            document.getElementById('question-modal').classList.add('active');
+        }
+
+        let currentQuestion = null;
+        let isAnswered = false;
+
+        function checkAnswer(selectedIdx, btnElement) {
+            if(isAnswered) return;
+            isAnswered = true;
+            
+            const options = document.getElementById('q-options').children;
+            const feedbackBox = document.getElementById('q-feedback');
+            
+            if(selectedIdx === currentQuestion.ans) {
+                // Correct
+                soundCorrect();
+                btnElement.classList.add('correct');
+                feedbackBox.style.background = '#d4edda';
+                feedbackBox.style.color = 'var(--success-dark)';
+                feedbackBox.innerHTML = `✅ <b>ถูกต้อง!</b> ได้เดินหน้า ${currentDice} ช่อง<br><small>${currentQuestion.exp}</small>`;
+                pendingMove = currentDice;
+            } else {
+                // Wrong
+                soundWrong();
+                btnElement.classList.add('wrong');
+                options[currentQuestion.ans].classList.add('correct'); // Show correct
+                feedbackBox.style.background = '#f8d7da';
+                feedbackBox.style.color = 'var(--danger-dark)';
+                feedbackBox.innerHTML = `❌ <b>ผิด!</b> ต้องหยุดอยู่กับที่ตาไฟ<br><small>เฉลย: ${currentQuestion.options[currentQuestion.ans]}<br>${currentQuestion.exp}</small>`;
+                pendingMove = 0;
+            }
+            
+            feedbackBox.classList.add('show');
+            document.getElementById('btn-continue').style.display = 'block';
+        }
+
+        function closeQuestion() {
+            document.getElementById('question-modal').classList.remove('active');
+            isAnswered = false;
+            
+            if(pendingMove > 0) {
+                executeMove();
+            } else {
+                nextTurn();
+            }
+        }
+
+        function executeMove() {
+            let p = players[currentPlayerIndex];
+            let targetPos = p.pos + pendingMove;
+            if(targetPos > maxSquares) targetPos = maxSquares;
+            
+            // Simple animation loop for token
+            let step = setInterval(() => {
+                p.pos++;
+                updateTokens();
+                if(p.pos >= targetPos) {
+                    clearInterval(step);
+                    checkBoardFeatures(p);
+                }
+            }, 300);
+        }
+
+        function checkBoardFeatures(player) {
+            setTimeout(() => {
+                if(ladders[player.pos]) {
+                    soundCorrect();
+                    alert(`ขึ้นบันได! ปรื๊ดดดด! จากช่อง ${player.pos} ไปช่อง ${ladders[player.pos]}`);
+                    player.pos = ladders[player.pos];
+                    updateTokens();
+                } else if(snakes[player.pos]) {
+                    soundWrong();
+                    alert(`อุ๊ย! โดนงูกัด ร่วงลงมา! จากช่อง ${player.pos} ตกไปช่อง ${snakes[player.pos]}`);
+                    player.pos = snakes[player.pos];
+                    updateTokens();
+                }
+
+                if(player.pos === maxSquares) {
+                    endGame(player);
+                } else {
+                    nextTurn();
+                }
+            }, 500);
+        }
+
+        function nextTurn() {
+            document.getElementById('dice-display').innerText = '❓';
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateUI();
+        }
+
+        function endGame(winner) {
+            soundWin();
+            document.getElementById('winner-text').innerHTML = `${winner.avatar} ${winner.name}`;
+            showScreen('screen-end');
+            startConfetti();
+        }
+
+        // --- 5. Confetti Particle System ---
+        function startConfetti() {
+            const canvas = document.getElementById('confetti');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let particles = [];
+            const colors = ['#FF5E62', '#00C9FF', '#ffc107', '#28a745', '#ff9a9e'];
+
+            for(let i=0; i<150; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    r: Math.random() * 6 + 4,
+                    dx: Math.random() * 4 - 2,
+                    dy: Math.random() * 5 + 3,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    tilt: Math.random() * 10 - 10
+                });
+            }
+
+            function draw() {
+                requestAnimationFrame(draw);
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.lineWidth = p.r;
+                    ctx.strokeStyle = p.color;
+                    ctx.moveTo(p.x + p.tilt + p.r, p.y);
+                    ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+                    ctx.stroke();
+
+                    p.y += p.dy;
+                    p.x += p.dx;
+                    if(p.y > canvas.height) {
+                        p.y = -10;
+                        p.x = Math.random() * canvas.width;
+                    }
+                });
+            }
+            draw();
+        }
+    </script>
+</body>
+</html>
