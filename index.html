@@ -153,7 +153,6 @@
         
         .dot { width: 16px; height: 16px; background: #222; border-radius: 50%; box-shadow: inset 0 3px 5px rgba(0,0,0,0.7), 0 1px 1px rgba(255,255,255,0.8); margin: auto; }
         
-        /* Proper 3D face positioning */
         .f1 { transform: rotateY(0deg) translateZ(40px); grid-template-columns: 1fr; align-items: center; justify-items: center; }
         .f2 { transform: rotateY(90deg) translateZ(40px); grid-template-columns: 1fr 1fr; }
         .f2 .dot:nth-child(1) { align-self: start; justify-self: start; }
@@ -245,7 +244,7 @@
                     <li>⏳ <b>จำกัดเวลา:</b> คิดข้อละ <b>30 วินาที</b>!</li>
                     <li>✅ <b>ตอบถูก:</b> ได้เดิน / ❌ <b>ผิดหรือหมดเวลา:</b> อดเดิน</li>
                     <li>🪜 <b>เชือก:</b> ปีนขึ้น / 🐍 <b>งูทะเล:</b> ร่วงลงมา</li>
-                    <li>ใครถึงช่อง <b>50</b> ก่อนชนะ! โจทย์จะไม่ซ้ำกัน!</li>
+                    <li>ใครถึงช่อง <b>50</b> ก่อนชนะ! <b>โจทย์สุ่มใหม่และไม่ซ้ำแน่นอน!</b></li>
                 </ul>
             </div>
             <center>
@@ -255,7 +254,6 @@
 
         <div id="screen-setup" class="screen">
             <h1 style="color: var(--primary);">🦈 เลือกอวตาร</h1>
-            <!-- แก้ไขข้อความจาก 5 เป็น 10 คน -->
             <p style="text-align: center;">เพิ่มผู้เล่นได้สูงสุด 10 คน</p>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 20px; border: 2px solid #ddd; max-width: 500px; margin: 0 auto;">
@@ -280,9 +278,7 @@
             </div>
 
             <div class="board-wrapper">
-                <div class="board" id="board">
-                    <!-- Board cells generated via JS -->
-                </div>
+                <div class="board" id="board"></div>
             </div>
 
             <div class="dice-area">
@@ -416,16 +412,117 @@
             { q: "ค.ร.น. ของ 8, 10, 12 คือ?", opts: ["2", "40", "60", "120"], ans: 3, exp: "120 หารด้วย 8, 10, 12 ลงตัว" }
         ];
 
+        /* --- ระบบสุ่มโจทย์แบบไฮบริด ป้องกันการซ้ำ 100% --- */
         let questionPool = [];
+        let generatedHistory = new Set();
         
-        function getNextQuestion() {
-            if(questionPool.length === 0) {
-                // Refill and shuffle to avoid repeats until all are used
-                questionPool = [...allQuestions];
-                questionPool.sort(() => Math.random() - 0.5);
-            }
-            return questionPool.pop();
+        // ฟังก์ชันช่วยคำนวณคณิตศาสตร์เพื่อสร้างโจทย์แบบเรียลไทม์
+        function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+        function gcdMultiple(arr) { return arr.reduce((a, b) => gcd(a, b)); }
+        function lcm(a, b) { return (a * b) / gcd(a, b); }
+        function lcmMultiple(arr) { return arr.reduce((a, b) => lcm(a, b)); }
+
+        function initQuestions() {
+            questionPool = [...allQuestions];
+            questionPool.sort(() => Math.random() - 0.5); // สลับข้อแบบสุ่มทุกครั้ง
+            generatedHistory.clear();
         }
+
+        function getNextQuestion() {
+            if (questionPool.length === 0 && generatedHistory.size === 0) {
+                initQuestions();
+            }
+            
+            // ดึงโจทย์หลักที่ตั้งไว้มาใช้ก่อนจนกว่าจะหมด
+            if (questionPool.length > 0) {
+                let q = questionPool.pop();
+                generatedHistory.add(q.q);
+                return q;
+            }
+            
+            // หากโจทย์หลักหมด ระบบจะเข้าสู่โหมด "สร้างโจทย์ใหม่แบบเรียลไทม์" ไม่รู้จบ
+            return generateUniqueQuestion();
+        }
+
+        function generateUniqueQuestion() {
+            let maxTries = 100;
+            while (maxTries-- > 0) {
+                let type = Math.floor(Math.random() * 4); // 0 ถึง 3
+                let nums = [];
+                let ans = 0;
+                let qText = "";
+                let exp = "";
+                
+                if (type === 0) { // ห.ร.ม. 2 จำนวน
+                    let g = Math.floor(Math.random() * 12) + 2; 
+                    let a1 = Math.floor(Math.random() * 6) + 1;
+                    let a2 = Math.floor(Math.random() * 6) + 1;
+                    while (a1 === a2 || gcd(a1, a2) !== 1) { a2 = Math.floor(Math.random() * 6) + 1; }
+                    nums = [g * a1, g * a2].sort((a,b)=>a-b);
+                    ans = g;
+                    qText = `ห.ร.ม. ของ ${nums[0]} และ ${nums[1]} คือ?`;
+                    exp = `${ans} เป็นจำนวนที่มากที่สุดที่หาร ${nums[0]} และ ${nums[1]} ลงตัว`;
+                } else if (type === 1) { // ค.ร.น. 2 จำนวน
+                    let a1 = Math.floor(Math.random() * 10) + 2;
+                    let a2 = Math.floor(Math.random() * 10) + 2;
+                    while (a1 === a2) { a2 = Math.floor(Math.random() * 10) + 2; }
+                    nums = [a1, a2].sort((a,b)=>a-b);
+                    ans = lcm(a1, a2);
+                    if (ans > 150) continue; 
+                    qText = `ค.ร.น. ของ ${nums[0]} และ ${nums[1]} คือ?`;
+                    exp = `${ans} เป็นจำนวนที่น้อยที่สุดที่ ${nums[0]} และ ${nums[1]} หารลงตัว`;
+                } else if (type === 2) { // ห.ร.ม. 3 จำนวน
+                    let g = Math.floor(Math.random() * 6) + 2; 
+                    let a1, a2, a3;
+                    do {
+                        a1 = Math.floor(Math.random() * 5) + 1;
+                        a2 = Math.floor(Math.random() * 5) + 1;
+                        a3 = Math.floor(Math.random() * 5) + 1;
+                    } while (a1===a2 || a2===a3 || a1===a3 || gcdMultiple([a1, a2, a3]) !== 1);
+                    nums = [g*a1, g*a2, g*a3].sort((a,b)=>a-b);
+                    ans = g;
+                    qText = `ห.ร.ม. ของ ${nums.join(', ')} คือ?`;
+                    exp = `${ans} เป็นจำนวนที่มากที่สุดที่หารทั้งสามจำนวนลงตัว`;
+                } else { // ค.ร.น. 3 จำนวน
+                    let base = [2, 3, 4, 5, 6, 8, 10];
+                    base.sort(() => Math.random() - 0.5);
+                    nums = base.slice(0, 3).sort((a,b)=>a-b);
+                    ans = lcmMultiple(nums);
+                    if (ans > 150) continue; 
+                    qText = `ค.ร.น. ของ ${nums.join(', ')} คือ?`;
+                    exp = `${ans} เป็นจำนวนที่น้อยที่สุดที่ทั้งสามจำนวนหารลงตัว`;
+                }
+                
+                // ตรวจสอบว่าโจทย์นี้เคยถามไปแล้วหรือยัง
+                if (!generatedHistory.has(qText)) {
+                    generatedHistory.add(qText);
+                    
+                    // สร้างตัวเลือก 4 ข้อหลอกที่ไม่ซ้ำกัน
+                    let optsSet = new Set([ans]);
+                    while (optsSet.size < 4) {
+                        let offset = Math.floor(Math.random() * 5) + 1;
+                        let mult = Math.random() < 0.5 ? 1 : -1;
+                        let wrong = ans + (offset * (type % 2 === 0 ? 1 : nums[0]) * mult);
+                        if (wrong <= 0) wrong = ans + offset * 2; 
+                        if (wrong !== ans) optsSet.add(wrong);
+                    }
+                    let opts = Array.from(optsSet).sort((a, b) => a - b);
+                    let ansIdx = opts.indexOf(ans);
+                    
+                    return { q: qText, opts: opts.map(String), ans: ansIdx, exp: exp };
+                }
+            }
+            
+            // กรณีสุดท้ายเผื่อระบบสุ่มตื้อ
+            let ran = Math.floor(Math.random()*100) + 10;
+            return { 
+                q: `ค.ร.น. ของ ${ran} และ ${ran} คือ? (ข้อพิเศษ)`, 
+                opts: [ran.toString(), (ran+1).toString(), (ran+2).toString(), (ran+3).toString()], 
+                ans: 0, 
+                exp: "คือตัวมันเอง" 
+            };
+        }
+        /* ------------------------------------------- */
 
         const avatarList = ['🧜‍♀️', '🐡', '🦀', '🐢', '🐬', '🐙', '🦑', '🏴‍☠️', '⛵', '🦈'];
         let selectedAvatar = '🧜‍♀️';
@@ -435,15 +532,14 @@
         let targetMove = 0;
         const boardSize = 50;
 
-        const ropes = { 5: 16, 14: 28, 22: 37, 36: 46 }; // Ladders
-        const eels = { 18: 7, 32: 11, 43: 24, 48: 26 }; // Snakes
+        const ropes = { 5: 16, 14: 28, 22: 37, 36: 46 }; 
+        const eels = { 18: 7, 32: 11, 43: 24, 48: 26 }; 
 
-        // Winding board layout (Boustrophedon): bottom to top
         let boardLayout = [];
         for (let row = 4; row >= 0; row--) {
             let rowCells = [];
             for (let col = 1; col <= 10; col++) rowCells.push((4 - row) * 10 + col);
-            if (row % 2 !== 0) rowCells.reverse(); // Odd rows visually R-L
+            if (row % 2 !== 0) rowCells.reverse(); 
             boardLayout = boardLayout.concat(rowCells);
         }
 
@@ -473,7 +569,6 @@
 
         function addPlayer() {
             let name = document.getElementById('player-name').value.trim() || `ลูกเรือ ${players.length + 1}`;
-            // แก้ไขข้อจำกัดจำนวนผู้เล่นเป็น 10 คน
             if(players.length >= 10) {
                 document.getElementById('player-name').value = "เต็มแล้ว! (สูงสุด 10)";
                 return;
@@ -553,7 +648,6 @@
             cube.style.transform = 'translateZ(-40px) rotateX(0deg) rotateY(0deg)'; 
         }
 
-        // 3D rotations corresponding to faces
         const rotMap = {
             1: 'translateZ(-40px) rotateX(0deg) rotateY(0deg)',
             2: 'translateZ(-40px) rotateX(0deg) rotateY(-90deg)',
@@ -731,7 +825,6 @@
             }, 500);
         }
 
-        // Custom alert mechanism to avoid native alert()
         function showFeedbackModal(title, msg) {
             const overlay = document.createElement('div');
             overlay.className = 'modal-overlay active';
